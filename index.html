@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapeado de Ramas Bajas - Morones Prieto a Chevrolet Rivero Linda Vista | TLE Automotive</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Mapbox GL JS CSS & JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        h1, h2, h3, .brand-font {
+            font-family: 'Oswald', sans-serif;
+        }
+
+        /* Industrial Hazard Pattern Header & Footer */
+        .hazard-bar {
+            background: repeating-linear-gradient(
+                -45deg,
+                #FFCC00,
+                #FFCC00 15px,
+                #111111 15px,
+                #111111 30px
+            );
+            height: 12px;
+            width: 100%;
+        }
+
+        /* Custom Mapbox Popup Style */
+        .mapboxgl-popup-content {
+            background: #1a1a1a !important;
+            color: #ffffff !important;
+            border: 2px solid #FFCC00;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.8);
+            padding: 8px !important;
+        }
+        .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+            border-top-color: #FFCC00 !important;
+        }
+        .mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+            border-bottom-color: #FFCC00 !important;
+        }
+        .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+            border-right-color: #FFCC00 !important;
+        }
+        .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+            border-left-color: #FFCC00 !important;
+        }
+        .mapboxgl-popup-close-button {
+            color: #FFCC00 !important;
+            font-size: 16px;
+            padding: 4px 8px !important;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FFCC00;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #e6b800;
+        }
+
+        /* Warning Icon Pulse Animation */
+        .pulsing-marker {
+            animation: pulse-danger 1.5s infinite;
+        }
+        @keyframes pulse-danger {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-zinc-950 text-slate-100">
+
+    <!-- Industrial Warning Header Top Bar -->
+    <div class="hazard-bar"></div>
+
+    <!-- Main Header -->
+    <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 flex flex-wrap justify-between items-center z-20 shadow-xl">
+        <div class="flex items-center space-x-3">
+            <!-- Brand Logo / Text -->
+            <div class="bg-black text-[#FFCC00] font-black italic text-2xl px-3 py-1 rounded border border-[#FFCC00] tracking-wider brand-font">
+                TLE <span class="text-xs tracking-normal block text-white -mt-1 not-italic">AUTOMOTIVE</span>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-wide text-[#FFCC00] flex items-center gap-2">
+                    <i class="fa-solid text-amber-400 fa-triangle-exclamation"></i>
+                    MAPEADO DE RAMAS BAJAS • MORONES PRIETO A CHEVROLET RIVERO LINDA VISTA
+                </h1>
+                <p class="text-xs text-zinc-400">Prevención de Daños en Nodrizas | Tramo Santa Catarina - Monterrey - Guadalupe, N.L.</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3 mt-2 sm:mt-0">
+            <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                10 Puntos Críticos Registrados
+            </span>
+            <button onclick="exportCSV()" class="bg-[#FFCC00] hover:bg-yellow-400 text-black font-bold px-3 py-1.5 rounded text-xs transition duration-200 flex items-center gap-2 shadow-md">
+                <i class="fa-solid fa-file-csv text-base"></i> Exportar Reporte CSV
+            </button>
+        </div>
+    </header>
+
+    <!-- App Body Layout -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- Left/Top Sidebar - Controls & Location List -->
+        <aside class="w-full lg:w-96 bg-zinc-900 border-r border-zinc-800 flex flex-col z-10 overflow-hidden shadow-2xl">
+            
+            <!-- Alert Banner -->
+            <div class="bg-yellow-500/10 border-l-4 border-[#FFCC00] p-3 m-3 rounded text-xs text-zinc-300">
+                <p class="font-bold text-[#FFCC00] flex items-center gap-1.5 text-sm mb-1">
+                    <i class="fa-solid fa-truck-ramp-box"></i> RIESGO DE DESPEJE VERTICAL (NODRIZAS)
+                </p>
+                Los puntos señalados corresponden a tramos con vegetación/ramas bajas que pueden interferir con el nivel superior de carga de las nodrizas en ruta hacia la agencia Chevrolet Rivero Linda Vista.
+            </div>
+
+            <!-- Header List -->
+            <div class="px-4 py-2 bg-zinc-950/60 border-y border-zinc-800 flex justify-between items-center text-xs text-zinc-400 font-semibold uppercase tracking-wider">
+                <span>Puntos de Control (10)</span>
+                <span>Coordenadas</span>
+            </div>
+
+            <!-- Scrollable Points List -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-2.5" id="points-container">
+                <!-- Dynamic Content injected via JS -->
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="p-3 bg-zinc-950 border-t border-zinc-800 text-xs text-zinc-400 flex justify-between items-center">
+                <div>
+                    <span class="block text-white font-bold">Ruta Evaluada:</span>
+                    <span>Morones Prieto - Miguel Alemán</span>
+                </div>
+                <div class="text-right">
+                    <span class="block text-amber-400 font-bold">Destino Final:</span>
+                    <span>Chevrolet Rivero Linda Vista</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Map Container -->
+        <main class="flex-1 relative h-full w-full bg-zinc-950">
+            <!-- Mapbox Map -->
+            <div id="map" class="h-full w-full z-0"></div>
+
+            <!-- Map Floating Legend overlay -->
+            <div class="absolute bottom-6 right-6 z-[10] bg-zinc-900/90 backdrop-blur-md border border-zinc-700 p-3 rounded-lg shadow-2xl text-xs space-y-2 max-w-xs">
+                <div class="font-bold text-[#FFCC00] border-b border-zinc-700 pb-1 mb-1 flex items-center justify-between">
+                    <span>SIMBOLOGÍA DE SEGURIDAD</span>
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded-full bg-red-600 border-2 border-white flex items-center justify-center text-[8px] text-white font-bold">⚠️</div>
+                    <span class="text-zinc-200">Alerta de Ramas Bajas / Obstrucción</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-[8px] text-white font-bold">🏁</div>
+                    <span class="text-zinc-200">Destino: Ag. Chevrolet Rivero</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-1 bg-amber-400 border border-black"></div>
+                    <span class="text-zinc-200">Trayectoria de Nodriza</span>
+                </div>
+                <div class="text-[10px] text-zinc-400 pt-1 border-t border-zinc-800">
+                    Sujeto a inspección constante de flota TLE.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Industrial Warning Footer Bottom Bar -->
+    <footer class="bg-black text-center text-xs font-bold tracking-widest text-[#FFCC00] py-1 border-t border-zinc-800">
+        PROTEGE AL CLIENTE • PROTEGE AL OPERADOR • PROTEGE LA CALIDAD
+    </footer>
+    <div class="hazard-bar"></div>
+
+    <!-- Modal for Detailed Photo View -->
+    <div id="photo-modal" class="fixed inset-0 bg-black/80 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-zinc-900 border-2 border-[#FFCC00] rounded-lg max-w-2xl w-full p-4 relative shadow-2xl">
+            <button onclick="closeModal()" class="absolute top-3 right-3 text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full w-8 h-8 flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 id="modal-title" class="text-lg font-bold text-[#FFCC00] mb-2 pr-8">---</h3>
+            <div class="bg-black rounded border border-zinc-700 overflow-hidden mb-3">
+                <img id="modal-img" src="" alt="Vista cabina" class="w-full max-h-[60vh] object-contain">
+            </div>
+            <p id="modal-desc" class="text-sm text-zinc-300"></p>
+            <div class="mt-4 flex justify-end">
+                <button onclick="closeModal()" class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs font-bold px-4 py-2 rounded">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoicHIxMjk4IiwiYSI6ImNtdzlocjlsdzAyaG0yenB2Y3lpYTV1NmIifQ.zyKyhQ20JJP4RWaTtp_9VA';
+
+        const branchObstructions = [
+            {
+                id: 1,
+                name: "Punto 1: Morones Prieto Inicio",
+                lat: 25.673135,
+                lng: -100.398400,
+                location: "Av. Morones Prieto (Tramo Poniente)",
+                lane: "Carril Central / Exprés",
+                risk: "Ramas de álamos e inclinación de árboles invadiendo gálibo vertical superior (>4.2m).",
+                details: "Mantener distancia de seguridad y reducir velocidad.",
+                // img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+Morones+Inicio"
+                img: "https://gpoatc-my.sharepoint.com/:i:/g/personal/paola_ramirez_tlea_com_mx/IQB1x6qaZDl9Sp3jnaQaBmshASLSDqZAfqzwuQdsa2PX3aM?e=Udbzrj"
+            },
+            {
+                id: 2,
+                name: "Punto 2: Morones Prieto Carril Exprés",
+                lat: 25.672413,
+                lng: -100.386227,
+                location: "Av. Morones Prieto (Frente a Valle Poniente)",
+                lane: "Carril Exprés enmedio",
+                risk: "Follaje denso en arbolado lateral del lecho del río.",
+                details: "Riesgo de roces directos en estructura tubular del cabezal.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+Morones+Expr%C3%A9s"
+            },
+            {
+                id: 3,
+                name: "Punto 3: Morones Prieto Tramo Medio",
+                lat: 25.674737,
+                lng: -100.359290,
+                location: "Av. Morones Prieto e Intersección Gonzalitos",
+                lane: "Carril Exprés Enmedio",
+                risk: "Ramas pesadas inclinadas sobre el carril central.",
+                details: "Disminuir velocidad preventivamente para evitar impacto superior.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+Gonzalitos"
+            },
+            {
+                id: 4,
+                name: "Punto 4: Morones Prieto Oriente",
+                lat: 25.663572,
+                lng: -100.320158,
+                location: "Av. Morones Prieto (Cerca de Pío X / Cuauhtémoc)",
+                lane: "Carril Exprés zona intermedia",
+                risk: "Ramas bajas salientes de camellón y laterales.",
+                details: "Precaución en maniobras de cambio de carril.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+P%C3%ADo+X"
+            },
+            {
+                id: 5,
+                name: "Punto 5: Morones Prieto Desvío",
+                lat: 25.662350,
+                lng: -100.313528,
+                location: "Av. Morones Prieto (Zona Venustiano Carranza)",
+                lane: "Carril Exprés enmedio",
+                risk: "Arbolado urbano bajo con riesgo directo sobre el segundo nivel de autos.",
+                details: "Extremar precaución en el carril central.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+V.+Carranza"
+            },
+            {
+                id: 6,
+                name: "Punto 6: Paso a Desnivel / Constitución",
+                lat: 25.666800,
+                lng: -100.285200,
+                location: "Conexión Av. Morones Prieto a Av. Constitución",
+                lane: "Carril de incorporación",
+                risk: "Ramas sobre paso a desnivel y arbolado de contención lateral.",
+                details: "Reducir velocidad al tomar la curva e incorporación.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+Constituci%C3%B3n"
+            },
+            {
+                id: 7,
+                name: "Punto 7: Entronque / Incorporación",
+                lat: 25.670500,
+                lng: -100.272100,
+                location: "Tramo Av. Constitución Oriente",
+                lane: "Carril Derecho / Lateral",
+                risk: "Estructuras de ramas bajas en zonas de rampas y puentes.",
+                details: "Monitorear espejo derecho por vegetación sobresaliente.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+Entronque"
+            },
+            {
+                id: 8,
+                name: "Punto 8: Av. Miguel Alemán Lateral (Delicias Importadas / Alcione)",
+                lat: 25.694600,
+                lng: -100.260850,
+                location: "Av. Miguel Alemán (Lateral frente a Delicias Importadas / Vista Sol)",
+                lane: "Carril Lateral de incorporación",
+                risk: "Punto crítico detectado: Ramas bajas en carril lateral de desaceleración previo a zona comercial Linda Vista.",
+                details: "Reducir a 20 km/h en carril lateral para evitar raspaduras en rampas superiores.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Punto+Critico+-+Delicias+Importadas"
+            },
+            {
+                id: 9,
+                name: "Punto 9: Av. Miguel Alemán / Entrada Linda Vista",
+                lat: 25.694100,
+                lng: -100.263800,
+                location: "Av. Miguel Alemán (Frente a SAT Linda Vista / Los Agaves)",
+                lane: "Carril Lateral / Acceso a Agencias",
+                risk: "Ramas de banqueta urbana e infraestructura de baja altura frente a inmuebles comerciales.",
+                details: "Preparar maniobra de vuelta y desaceleración.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Cabina+TLE+-+SAT+Linda+Vista"
+            },
+            {
+                id: 10,
+                name: "Punto 10: Chevrolet Rivero Linda Vista (Destino)",
+                lat: 25.693450,
+                lng: -100.266200,
+                location: "Av. Miguel Alemán (Esquina Sam's Club / Condocasa Lindavista), Guadalupe, N.L.",
+                lane: "Zona de Entrega / Acceso a Patio de Agencia",
+                risk: "Punto Final de Entrega - Mapeado Concluido.",
+                details: "Revisar la unidad e ingresar al patio con velocidad max. 10 km/h.",
+                img: "https://placehold.co/600x400/18181b/FFCC00?text=Llegada+-+Chevrolet+Rivero+Linda+Vista",
+                isDestination: true
+            }
+        ];
+
+        let map;
+        let popups = [];
+
+        function initMap() {
+            // Mapbox GL initialization
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/satellite-streets-v12', // Estilo Satelital Híbrido
+                center: [-100.315, 25.675],
+                zoom: 12
+            });
+
+            // Controles de zoom
+            map.addControl(new mapboxgl.NavigationControl());
+
+            map.on('load', () => {
+                // Linea de trayecto en Mapbox GeoJSON
+                const routeCoordinates = branchObstructions.map(pt => [pt.lng, pt.lat]);
+
+                map.addSource('route', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': {
+                            'type': 'LineString',
+                            'coordinates': routeCoordinates
+                        }
+                    }
+                });
+
+                map.addLayer({
+                    'id': 'route-line',
+                    'type': 'line',
+                    'source': 'route',
+                    'layout': {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    'paint': {
+                        'line-color': '#FFCC00',
+                        'line-width': 5,
+                        'line-dasharray': [2, 2]
+                    }
+                });
+
+                // Populate Sidebar & Map Markers
+                const container = document.getElementById('points-container');
+                container.innerHTML = '';
+
+                // Bounds para ajustar la cámara a todos los puntos
+                const bounds = new mapboxgl.LngLatBounds();
+
+                branchObstructions.forEach((pt, index) => {
+                    bounds.extend([pt.lng, pt.lat]);
+                    const isDest = pt.isDestination;
+
+                    // Crear elemento HTML para marcador de Mapbox
+                    const el = document.createElement('div');
+                    el.className = 'custom-mapbox-marker cursor-pointer';
+                    el.innerHTML = isDest ? 
+                        `<div class="bg-green-600 text-white border-2 border-yellow-400 shadow-xl rounded-full w-9 h-9 flex items-center justify-center font-bold text-base">🏁</div>` :
+                        `<div class="pulsing-marker bg-red-600 text-yellow-300 border-2 border-yellow-400 shadow-xl rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm"><i class="fa-solid fa-triangle-exclamation"></i></div>`;
+
+                    // Popup Content
+                    const popupContent = `
+                        <div class="p-1 max-w-xs">
+                            <div class="text-xs font-bold text-amber-400 uppercase tracking-wide mb-1 border-b border-zinc-700 pb-1">
+                                <i class="${isDest ? 'fa-solid fa-flag-checkered text-green-500' : 'fa-solid fa-triangle-exclamation text-red-500'} mr-1"></i> ${pt.name}
+                            </div>
+                            <p class="text-xs text-zinc-200 font-semibold mb-1">${pt.location}</p>
+                            <p class="text-[11px] text-zinc-400 mb-2"><b>Carril:</b> ${pt.lane}</p>
+                            <div class="bg-zinc-800 p-2 rounded text-[11px] ${isDest ? 'text-green-300' : 'text-amber-300'} border border-zinc-700 mb-2">
+                                <b>${isDest ? 'Estatus:' : 'Riesgo:'}</b> ${pt.risk}
+                            </div>
+                            <div class="flex justify-between items-center text-[10px] text-zinc-400 font-mono mb-2">
+                                <span>Lat: ${pt.lat.toFixed(6)}</span>
+                                <span>Lng: ${pt.lng.toFixed(6)}</span>
+                            </div>
+                            <button onclick="openModal(${pt.id})" class="w-full bg-[#FFCC00] hover:bg-yellow-400 text-black font-bold text-xs py-1 px-2 rounded flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-camera"></i> Ver Referencia Cabina
+                            </button>
+                        </div>
+                    `;
+
+                    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent);
+                    popups.push(popup);
+
+                    new mapboxgl.Marker(el)
+                        .setLngLat([pt.lng, pt.lat])
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    // Build Sidebar Card
+                    const card = document.createElement('div');
+                    card.className = `bg-zinc-800/80 hover:bg-zinc-800 border ${isDest ? 'border-green-500/60' : 'border-zinc-700'} hover:border-[#FFCC00] p-3 rounded-lg transition duration-200 cursor-pointer shadow-md group`;
+                    card.onclick = () => focusLocation(index);
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-bold ${isDest ? 'text-green-400' : 'text-[#FFCC00]'} group-hover:text-yellow-300">
+                                #${pt.id} - ${pt.name.split(':')[1] || pt.name}
+                            </span>
+                            <span class="text-[10px] ${isDest ? 'bg-green-950 text-green-400 border-green-800' : 'bg-red-950 text-red-400 border-red-800'} border px-1.5 py-0.5 rounded font-bold">
+                                ${isDest ? 'DESTINO' : 'ALERTA'}
+                            </span>
+                        </div>
+                        <p class="text-xs text-zinc-300 mb-1 font-medium">${pt.location}</p>
+                        <p class="text-[11px] text-zinc-400 mb-2 line-clamp-1"><i class="fa-solid fa-road text-amber-400 mr-1"></i> ${pt.lane}</p>
+                        
+                        <div class="flex justify-between items-center text-[11px] pt-2 border-t border-zinc-700/60">
+                            <span class="text-zinc-400 font-mono">${pt.lat.toFixed(4)}, ${pt.lng.toFixed(4)}</span>
+                            <button onclick="event.stopPropagation(); focusLocation(${index})" class="text-[#FFCC00] hover:underline font-bold text-xs flex items-center gap-1">
+                                Centrar <i class="fa-solid fa-crosshairs"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    container.appendChild(card);
+                });
+
+                // Centrar mapa encuadrando todos los puntos
+                map.fitBounds(bounds, { padding: 60 });
+            });
+        }
+
+        // Focus map on selected point in Mapbox
+        function focusLocation(index) {
+            const pt = branchObstructions[index];
+            
+            // Cerrar otros popups abiertos
+            popups.forEach(p => p.remove());
+
+            map.flyTo({
+                center: [pt.lng, pt.lat],
+                zoom: 16,
+                essential: true,
+                speed: 1.2
+            });
+
+            setTimeout(() => {
+                popups[index].addTo(map);
+            }, 1000);
+        }
+
+        // Modal Logic
+        function openModal(id) {
+            const pt = branchObstructions.find(p => p.id === id);
+            if (!pt) return;
+
+            document.getElementById('modal-title').innerText = pt.name + " - " + pt.location;
+            document.getElementById('modal-img').src = pt.img;
+            document.getElementById('modal-desc').innerText = pt.risk + " (" + pt.details + ")";
+            document.getElementById('photo-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('photo-modal').classList.add('hidden');
+        }
+
+        // Export data to CSV
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,ID,Nombre,Latitud,Longitud,Ubicacion,Carril,Riesgo\n";
+
+            branchObstructions.forEach(pt => {
+                const row = [
+                    pt.id,
+                    `"${pt.name}"`,
+                    pt.lat,
+                    pt.lng,
+                    `"${pt.location}"`,
+                    `"${pt.lane}"`,
+                    `"${pt.risk}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "TLE_Mapeo_Ramas_Bajas_Rivero_Linda_Vista.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
